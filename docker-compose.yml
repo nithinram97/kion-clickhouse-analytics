@@ -1,0 +1,88 @@
+# =============================================================
+# KION Analytics — local stack: LibreChat + MongoDB + Superset
+#   LibreChat UI : http://localhost:3080
+#   Superset UI  : http://localhost:8088  (admin / admin by default)
+# ClickHouse itself runs in ClickHouse Cloud (see clickhouse/*.sql)
+# =============================================================
+
+services:
+  # ---------------- LibreChat ----------------
+  librechat:
+    image: ghcr.io/danny-avila/librechat:latest
+    container_name: librechat
+    restart: unless-stopped
+    ports:
+      - "3080:3080"
+    depends_on:
+      - mongodb
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3080
+      MONGO_URI: mongodb://mongodb:27017/LibreChat
+      SEARCH: "false"            # skip meilisearch for the hackathon
+      ALLOW_REGISTRATION: "true"
+    volumes:
+      - ./librechat/librechat.yaml:/app/librechat.yaml:ro
+      - librechat_images:/app/client/public/images
+
+  mongodb:
+    image: mongo:6
+    container_name: librechat-mongo
+    restart: unless-stopped
+    command: mongod --noauth
+    volumes:
+      - mongo_data:/data/db
+
+  # ---------------- ClickHouse MCP server (for LibreChat agents) ----------------
+  # Official mcp-clickhouse (PyPI) in HTTP transport; LibreChat connects to it
+  # via mcpServers in librechat/librechat.yaml.
+  mcp-clickhouse:
+    image: python:3.12-slim
+    container_name: mcp-clickhouse
+    restart: unless-stopped
+    command: >
+      /bin/sh -c "pip install --no-cache-dir mcp-clickhouse &&
+                  python -m mcp_clickhouse.main"
+    environment:
+      CLICKHOUSE_HOST: ${CH_HOST}
+      CLICKHOUSE_PORT: "8443"
+      CLICKHOUSE_USER: ${CH_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CH_PASSWORD}
+      CLICKHOUSE_SECURE: "true"
+      CLICKHOUSE_DATABASE: kion
+      CLICKHOUSE_MCP_SERVER_TRANSPORT: http
+      CLICKHOUSE_MCP_BIND_HOST: 0.0.0.0
+      CLICKHOUSE_MCP_BIND_PORT: "8000"
+      CLICKHOUSE_MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN}
+      CLICKHOUSE_MCP_QUERY_TIMEOUT: "60"
+
+  # ---------------- Superset ----------------
+  superset:
+    image: apache/superset:4.1.1
+    container_name: superset
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-hackathon-change-me}
+      ADMIN_USERNAME: ${SUPERSET_ADMIN:-admin}
+      ADMIN_PASSWORD: ${SUPERSET_PASSWORD:-admin}
+    command: >
+      /bin/sh -c "
+        pip install --no-cache-dir clickhouse-connect &&
+        superset db upgrade &&
+        superset fab create-admin
+          --username $${ADMIN_USERNAME} --password $${ADMIN_PASSWORD}
+          --firstname Admin --lastname User --email admin@local || true &&
+        superset init &&
+        gunicorn -w 4 -k gevent --timeout 120 -b 0.0.0.0:8088
+          'superset.app:create_app()'"
+    volumes:
+      - superset_home:/app/superset_home
+
+volumes:
+  mongo_data:
+  librechat_images:
+  superset_home:

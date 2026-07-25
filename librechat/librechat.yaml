@@ -1,0 +1,26 @@
+# LibreChat custom config (mounted read-only into the container).
+# Docs: https://www.librechat.ai/docs/configuration/librechat_yaml
+version: 1.2.1
+cache: true
+
+interface:
+  customWelcome: "KION Analytics Assistant — ask for the KPI overview, a movie one-pager, or a segment one-pager."
+
+# ---------------- ClickHouse MCP server ----------------
+# Runs as the `mcp-clickhouse` compose service (HTTP transport, port 8000).
+# Gives agents tools: run_select_query, list_databases, list_tables.
+# The server is read-only for queries (SELECTs), which is what you want
+# to expose to an LLM.
+mcpServers:
+  clickhouse:
+    type: streamable-http
+    url: http://mcp-clickhouse:8000/mcp
+    headers:
+      Authorization: "Bearer ${MCP_AUTH_TOKEN}"
+    timeout: 60000
+
+# Point Agents/Actions at your Express KPI API once it's running, e.g.:
+# - Build an Agent in the LibreChat UI, enable the `clickhouse` MCP tools
+# - Add an Action with an OpenAPI spec served by your backend
+#   (host.docker.internal resolves to your machine from inside the container)
+#   e.g. http://host.docker.internal:3001/openapi.json
