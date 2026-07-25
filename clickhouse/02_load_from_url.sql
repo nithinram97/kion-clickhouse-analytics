@@ -23,16 +23,16 @@
 -- Prereq: run rehost/rehost.sh ONCE in a GitHub Codespace to publish
 --         interactions.csv.gz / users_en.csv.gz / items_en.csv.gz to your
 --         own public repo. ClickHouse url() cannot read .zip.
--- Find/replace:  nithinram97/kion-data  ->  your repo
+-- Find/replace:  nithinramappacontact-byte/kion-data  ->  your repo
 -- =============================================================
 
-SET max_http_get_redirects = 5;  -- raw.githubusercontent redirects
+SET max_http_get_redirects = 5;  -- github.com redirects
 
 -- ---------- interactions (5,476,251 rows) ----------
 INSERT INTO kion.interactions (user_id, item_id, last_watch_dt, total_dur, watched_pct)
 SELECT user_id, item_id, last_watch_dt, total_dur, watched_pct
 FROM url(
-    'https://raw.githubusercontent.com/nithinram97/kion-data/main/interactions.csv.gz',
+    'https://raw.githubusercontent.com/nithinramappacontact-byte/kion-clickhouse-analytics/refs/heads/main/interactions.csv.gz',
     CSVWithNames,
     'user_id UInt32,
      item_id UInt32,
@@ -50,7 +50,7 @@ SELECT
     ifNull(sex, '')     AS sex,      -- ~14k blanks; values 'M' / 'F'
     ifNull(kids_flg, 0) AS kids_flg
 FROM url(
-    'https://raw.githubusercontent.com/nithinram97/kion-data/main/users_en.csv.gz',
+    'https://raw.githubusercontent.com/nithinramappacontact-byte/kion-clickhouse-analytics/refs/heads/main/users_en.csv.gz',
     CSVWithNames,
     'idx UInt32,
      user_id UInt32,
@@ -81,7 +81,7 @@ SELECT
     ifNull(description, '')     AS description,
     ifNull(keywords, '')        AS keywords
 FROM url(
-    'https://raw.githubusercontent.com/nithinram97/kion-data/main/items_en.csv.gz',
+    'https://raw.githubusercontent.com/nithinramappacontact-byte/kion-clickhouse-analytics/refs/heads/main/items_en.csv.gz',
     CSVWithNames,
     'idx UInt32,
      item_id UInt32,
