@@ -15,9 +15,26 @@ mcpServers:
   clickhouse:
     type: streamable-http
     url: http://mcp-clickhouse:8000/mcp
-    headers:
-      Authorization: "Bearer ${MCP_AUTH_TOKEN}"
     timeout: 60000
+endpoints:
+  custom:
+    - name: "OpenRouter"
+      apiKey: "${OPENROUTER_KEY}"
+      baseURL: "https://openrouter.ai/api/v1"
+      models:
+        default:
+          - "openrouter/free"
+          - "google/gemma-4-31b-it:free"
+          - "nvidia/nemotron-3-super-120b-a12b:free"
+          - "openai/gpt-oss-20b:free"
+        fetch: true
+      titleConvo: true
+      titleModel: "openrouter/free"
+      modelDisplayLabel: "OpenRouter"
+      dropParams: ["stop"]
+mcpSettings:
+  allowedAddresses:
+    - "mcp-clickhouse:8000"
 
 # Point Agents/Actions at your Express KPI API once it's running, e.g.:
 # - Build an Agent in the LibreChat UI, enable the `clickhouse` MCP tools
